@@ -4,6 +4,18 @@ import java.util.List;
 import java.util.LinkedList;
 import static com.craftinginterpreters.lox.TokenType.*;
 
+/**
+  * Grammar so far
+  * Expression -> Comma expression
+  * Comma Expression -> Ternary Expression (, Ternary Expression) *
+  * Ternary Expression -> Equality ( "?" Equality ":" Equality) *, right associative
+  * Equality -> Comparison ( "==" | "!=" Comparison ) *, left associative
+  * Comparison -> Addition ( "!=" | ">" | ">=" | "<=" Addition) *, left associative
+  * Addition -> Multiplication ( "+" | "-" Multiplication) *, left associative
+  * Multiplication -> Unary ( "*" | "/" Unary) *, left associative
+  * Unary -> ("!" | "-") Unary | Primary
+  * Primary -> NUMBER | STRING | "TRUE" | "FALSE" | "NIL" | "(" Expression ")" 
+**/
 class Parser {
 
   private static class ParseError extends RuntimeException {}
