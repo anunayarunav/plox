@@ -5,6 +5,7 @@ import java.util.List;
 abstract class Expr {
   interface Visitor<R> {
     R visitBinaryExpr(Binary expr);
+    R visitTernaryExpr(Ternary expr);
     R visitGroupingExpr(Grouping expr);
     R visitLiteralExpr(Literal expr);
     R visitUnaryExpr(Unary expr);
@@ -22,6 +23,25 @@ abstract class Expr {
 
     final Expr left;
     final Token operator;
+    final Expr right;
+  }
+  static class Ternary extends Expr {
+    Ternary(Expr left, Token loperator, Expr middle, Token roperator, Expr right) {
+      this.left = left;
+      this.loperator = loperator;
+      this.middle = middle;
+      this.roperator = roperator;
+      this.right = right;
+    }
+
+    <R> R accept(Visitor<R> visitor) {
+      return visitor.visitTernaryExpr(this);
+    }
+
+    final Expr left;
+    final Token loperator;
+    final Expr middle;
+    final Token roperator;
     final Expr right;
   }
   static class Grouping extends Expr {

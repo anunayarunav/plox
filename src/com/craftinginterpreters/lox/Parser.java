@@ -1,7 +1,7 @@
 package com.craftinginterpreters.lox;
 
 import java.util.List;
-
+import java.util.LinkedList;
 import static com.craftinginterpreters.lox.TokenType.*;
 
 class Parser {
@@ -24,7 +24,53 @@ class Parser {
   }
 
   private Expr expression() {
-    return equality();
+    return comma();
+  }
+
+  //comma support added by @Anunay
+  private Expr comma() {
+    Expr expr = ternary();
+
+    while(match(COMMA)) {
+      Token operator = previous();
+      Expr right = ternary();
+      expr = new Expr.Binary(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  //ternary support added by @Anunay
+  private Expr ternary() {
+
+    LinkedList<Expr> stack = new LinkedList<Expr>();
+
+    Expr e = equality();
+    stack.add(e);
+
+    Token loperator = null, roperator = null;
+
+    while(match(QUESTION)) {
+      loperator = previous();
+      Expr middle = equality();
+      consume(COLON, "Expect ':' after expression.");
+      roperator = previous();
+      Expr right = equality();
+
+      stack.add(middle);
+      stack.add(right);
+    }
+
+    Expr expr = stack.removeLast();
+
+    while(!stack.isEmpty()) {
+      Expr middle = stack.removeLast();
+      Expr left = stack.removeLast();
+
+      expr = new Expr.Ternary(left, loperator, middle, roperator, expr);
+    }
+
+    return expr;
   }
 
   private Expr equality() {
@@ -93,6 +139,15 @@ class Parser {
 
     if (match(NUMBER, STRING)) {
       return new Expr.Literal(previous().literal);
+    }
+
+    //report binary operand starting at the beginning
+    if(match(BANG_EQUAL, EQUAL_EQUAL, GREATER, GREATER_EQUAL,
+            LESS, LESS_EQUAL, MINUS, PLUS, SLASH, STAR)) {
+
+      Token token = previous();
+      Lox.error(token.line, "Error at '" + token.lexeme + "', Binary Operator not expected at the beginning of the expression");
+      return expression();
     }
 
     if (match(LEFT_PAREN)) {

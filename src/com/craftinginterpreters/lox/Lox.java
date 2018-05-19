@@ -48,10 +48,12 @@ public class Lox {
     Parser parser = new Parser(tokens);
     Expr expression = parser.parse();
 
+    if(expression != null){
+      System.out.println(new AstPrinter().print(expression));
+    }
+
     // Stop if there was a syntax error.
     if (hadError) return;
-
-    System.out.println(new AstPrinter().print(expression));
   }
 
   static void error(int line, String message) {
