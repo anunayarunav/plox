@@ -1,11 +1,17 @@
 package com.craftinginterpreters.lox;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import static com.craftinginterpreters.lox.TokenType.*;
 
 /**
   * Grammar so far
+
+  * Program -> Statement* EOF;
+  * Statement -> ExpressionStatement | PrintStatement
+  * ExpressionStatement -> Expression ";"
+  * PrintStatement -> "print" Expression ";"
   * Expression -> Comma expression
   * Comma Expression -> Ternary Expression (, Ternary Expression) *
   * Ternary Expression -> Equality ( "?" Equality ":" Equality) *, right associative
@@ -14,7 +20,7 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Addition -> Multiplication ( "+" | "-" Multiplication) *, left associative
   * Multiplication -> Unary ( "*" | "/" Unary) *, left associative
   * Unary -> ("!" | "-") Unary | Primary
-  * Primary -> NUMBER | STRING | "TRUE" | "FALSE" | "NIL" | "(" Expression ")" 
+  * Primary -> NUMBER | STRING | "TRUE" | "FALSE" | "NIL" | "(" Expression ")"
 **/
 class Parser {
 
@@ -27,12 +33,34 @@ class Parser {
     this.tokens = tokens;
   }
 
-  Expr parse() {
-    try {
-      return expression();
-    } catch (ParseError error) {
-      return null;
+  List<Stmt> parse() {
+
+    List<Stmt> statements = new ArrayList<>();
+    while (!isAtEnd()) {
+      statements.add(statement());
     }
+
+    return statements;
+  }
+
+  private Stmt statement() {
+    if(match(PRINT)) {
+      return printStatement();
+    }
+
+    return expressionStatement();
+  }
+
+  private Stmt printStatement() {
+    Expr expr = expression();
+    consume(SEMICOLON, "Expect ';' after value.");
+    return new Stmt.Print(expr);
+  }
+
+  private Stmt expressionStatement() {
+    Expr expr = expression();
+    consume(SEMICOLON, "Expect ';' after expression.");
+    return new Stmt.Expression(expr);
   }
 
   private Expr expression() {
