@@ -12,6 +12,11 @@ class AstPrinter implements Expr.Visitor<String> {
   }
 
   @Override
+  public String visitAssignExpr(Expr.Assign expr){
+    return parenthesize("assign " + expr.name.lexeme, expr.value);
+  }
+
+  @Override
   public String visitTernaryExpr(Expr.Ternary expr){
     return parenthesize(expr.loperator.lexeme + expr.roperator.lexeme, expr.left, expr.middle, expr.right);
   }

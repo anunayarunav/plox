@@ -15,8 +15,9 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * ExpressionStatement -> Expression ";"
   * PrintStatement -> "print" Expression ";"
   * Expression -> Comma expression
-  * Comma Expression -> Ternary Expression (, Ternary Expression) *
-  * Ternary Expression -> Equality ( "?" Equality ":" Equality) *, right associative
+  * Comma Expression -> Assignment (, Assignment) *
+  * Assignment -> IDENTIFIER "=" Assignment | Ternary Expression
+  * Ternary Expression -> Equality ( "?" Ternary ":" Ternary) *, right associative
   * Equality -> Comparison ( "==" | "!=" Comparison ) *, left associative
   * Comparison -> Addition ( "!=" | ">" | ">=" | "<=" Addition) *, left associative
   * Addition -> Multiplication ( "+" | "-" Multiplication) *, left associative
@@ -96,12 +97,31 @@ class Parser {
 
   //comma support added by @Anunay
   private Expr comma() {
-    Expr expr = ternary();
+    Expr expr = assignment();
 
     while(match(COMMA)) {
       Token operator = previous();
-      Expr right = ternary();
+      Expr right = assignment();
       expr = new Expr.Binary(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  private Expr assignment() {
+    Expr expr = ternary();
+
+    if(match(EQUAL)) {
+
+      Token equals = previous();
+      Expr value = assignment();
+
+      if(expr instanceof Expr.Variable) {
+        Token name = ((Expr.Variable) expr).name;
+        return new Expr.Assign(name, value);
+      }
+
+      error(equals, "Invalid assignment target.");
     }
 
     return expr;
@@ -110,31 +130,18 @@ class Parser {
   //ternary support added by @Anunay
   private Expr ternary() {
 
-    LinkedList<Expr> stack = new LinkedList<Expr>();
-
-    Expr e = equality();
-    stack.add(e);
+    Expr expr = equality();
 
     Token loperator = null, roperator = null;
 
     while(match(QUESTION)) {
       loperator = previous();
-      Expr middle = equality();
+      Expr middle = ternary();
       consume(COLON, "Expect ':' after expression.");
       roperator = previous();
-      Expr right = equality();
+      Expr right = ternary();
 
-      stack.add(middle);
-      stack.add(right);
-    }
-
-    Expr expr = stack.removeLast();
-
-    while(!stack.isEmpty()) {
-      Expr middle = stack.removeLast();
-      Expr left = stack.removeLast();
-
-      expr = new Expr.Ternary(left, loperator, middle, roperator, expr);
+      expr = new Expr.Ternary(expr, loperator, middle, roperator, expr);
     }
 
     return expr;
