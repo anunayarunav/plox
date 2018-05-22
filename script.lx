@@ -1,4 +1,2 @@
-var abc = 100;
-var a = 30;
-abc = 50 + (112*12 + 3*3*(2 + 20));
-print abc;
+var a;
+print a + "q";
