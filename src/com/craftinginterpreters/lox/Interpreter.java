@@ -18,6 +18,19 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
   }
 
+  Object interpretExpression(Expr expr) {
+
+    try {
+
+      return stringify(evaluate(expr));
+
+    } catch(RuntimeError error) {
+      Lox.runtimeError(error);
+      return null;
+    }
+
+  }
+
   private Object evaluate(Expr expr) {
     return expr.accept(this);
   }
@@ -52,6 +65,22 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Void visitExpressionStmt(Stmt.Expression stmt) {
     evaluate(stmt.expression);
+    return null;
+  }
+
+  @Override
+  public Void visitIfStmt(Stmt.If stmt) {
+    Expr condition = stmt.condition;
+
+    boolean value = isTruthy(condition);
+
+    if(value) {
+      execute(stmt.thenBranch);
+    }
+    else if(stmt.elseBranch != null){
+      execute(stmt.elseBranch);
+    }
+
     return null;
   }
 
@@ -156,6 +185,19 @@ class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
   @Override
   public Object visitLiteralExpr(Expr.Literal expr) {
     return expr.value;
+  }
+
+  @Override
+  public Object visitLogicalExpr(Expr.Logical expr) {
+    Object left = evaluate(expr.left);
+
+    if (expr.operator.type == TokenType.OR) {
+      if (isTruthy(left)) return left;
+    } else {
+      if (!isTruthy(left)) return left;
+    }
+
+    return evaluate(expr.right);
   }
 
   @Override

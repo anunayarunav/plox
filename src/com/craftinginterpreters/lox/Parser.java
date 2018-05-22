@@ -11,14 +11,17 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Program -> Declaration* EOF;
   * Declaration -> VarDecl | Statement
   * VarDecl -> VAR IDENTIFIER ( "=" Expression) ? ";"
-  * Statement -> ExpressionStatement | PrintStatement | Block
+  * Statement -> IfStatement | ExpressionStatement | PrintStatement | Block
+  * IfStatement -> "if" "(" Expression ")" Statement ("else" Statement) ?
   * Block -> "{" Declaration* "}"
   * ExpressionStatement -> Expression ";"
   * PrintStatement -> "print" Expression ";"
   * Expression -> Comma expression
   * Comma Expression -> Assignment (, Assignment) *
   * Assignment -> IDENTIFIER "=" Assignment | Ternary Expression
-  * Ternary Expression -> Equality ( "?" Ternary ":" Ternary) *, right associative
+  * Ternary Expression -> Logic_or ( "?" Ternary ":" Ternary) *, right associative
+  * Logic_or -> Logic_and ( "or" Logic_and)*, left associative
+  * Logic_and -> Equality ( "and" Equality) *, left associative
   * Equality -> Comparison ( "==" | "!=" Comparison ) *, left associative
   * Comparison -> Addition ( "!=" | ">" | ">=" | "<=" Addition) *, left associative
   * Addition -> Multiplication ( "+" | "-" Multiplication) *, left associative
@@ -47,6 +50,16 @@ class Parser {
     return statements;
   }
 
+  Expr parseExpression() {
+    try {
+      Expr expr = expression();
+      return expr;
+    }
+    catch(ParseError error) {
+      return null;
+    }
+  }
+
   private Stmt declaration() {
     try {
       if(match(VAR)) return varDeclaration();
@@ -73,10 +86,26 @@ class Parser {
   }
 
   private Stmt statement() {
+    if(match(IF)) return ifStatement();
     if(match(PRINT)) return printStatement();
     if(match(LEFT_BRACE)) return new Stmt.Block(block());
 
     return expressionStatement();
+  }
+
+  private Stmt ifStatement() {
+    consume(LEFT_BRACE, "Expected '(' after 'if'");
+    Expr condition = expression();
+    consume(RIGHT_BRACE, "Expected ')' after 'expression'");
+
+    Stmt thenBranch = statement();
+    Stmt elseBranch = null;
+
+    if(match(ELSE)) {
+      elseBranch = statement();
+    }
+
+    return new Stmt.If(condition, thenBranch, elseBranch);
   }
 
   private Stmt printStatement() {
@@ -140,7 +169,7 @@ class Parser {
   //ternary support added by @Anunay
   private Expr ternary() {
 
-    Expr expr = equality();
+    Expr expr = or();
 
     Token loperator = null, roperator = null;
 
@@ -152,6 +181,31 @@ class Parser {
       Expr right = ternary();
 
       expr = new Expr.Ternary(expr, loperator, middle, roperator, expr);
+    }
+
+    return expr;
+  }
+
+  private Expr or() {
+    Expr expr = and();
+
+    while(match(OR)) {
+      Token operator = previous();
+      Expr right = and();
+
+      expr = new Expr.Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  private Expr and() {
+    Expr expr = equality();
+
+    while(match(AND)) {
+      Token operator = previous();
+      Expr right = equality();
+      expr = new Expr.Logical(expr, operator, right);
     }
 
     return expr;

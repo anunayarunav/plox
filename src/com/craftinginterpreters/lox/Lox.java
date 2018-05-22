@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static com.craftinginterpreters.lox.TokenType.*;
+
 public class Lox {
 
   private static final Interpreter interpreter = new Interpreter();
@@ -51,16 +53,27 @@ public class Lox {
     // System.out.println(tokens);
 
     Parser parser = new Parser(tokens);
-    List<Stmt> statements = parser.parse();
 
-    // if(expression != null){
-    //   System.out.println(new AstPrinter().print(expression));
-    // }
+    if(tokens.get(tokens.size() - 2).type != SEMICOLON) {
+      //possibly an expression
+      Expr expression = parser.parseExpression();
 
-    // Stop if there was a syntax error.
-    if (hadError) return;
+      if(hadError) return;
 
-    interpreter.interpret(statements);
+      System.out.println(interpreter.interpretExpression(expression));
+    }
+    else {
+      List<Stmt> statements = parser.parse();
+
+      // if(expression != null){
+      //   System.out.println(new AstPrinter().print(expression));
+      // }
+
+      // Stop if there was a syntax error.
+      if (hadError) return;
+
+      interpreter.interpret(statements);
+    }
   }
 
   static void error(int line, String message) {
