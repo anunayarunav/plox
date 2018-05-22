@@ -53,27 +53,16 @@ public class Lox {
     // System.out.println(tokens);
 
     Parser parser = new Parser(tokens);
+    List<Stmt> statements = parser.parse();
 
-    if(tokens.get(tokens.size() - 2).type != SEMICOLON) {
-      //possibly an expression
-      Expr expression = parser.parseExpression();
+    // if(expression != null){
+    //   System.out.println(new AstPrinter().print(expression));
+    // }
 
-      if(hadError) return;
+    // Stop if there was a syntax error.
+    if (hadError) return;
 
-      System.out.println(interpreter.interpretExpression(expression));
-    }
-    else {
-      List<Stmt> statements = parser.parse();
-
-      // if(expression != null){
-      //   System.out.println(new AstPrinter().print(expression));
-      // }
-
-      // Stop if there was a syntax error.
-      if (hadError) return;
-
-      interpreter.interpret(statements);
-    }
+    interpreter.interpret(statements);
   }
 
   static void error(int line, String message) {

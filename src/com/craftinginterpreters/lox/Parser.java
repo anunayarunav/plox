@@ -11,11 +11,12 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Program -> Declaration* EOF;
   * Declaration -> VarDecl | Statement
   * VarDecl -> VAR IDENTIFIER ( "=" Expression) ? ";"
-  * Statement -> IfStatement | ExpressionStatement | PrintStatement | Block
+  * Statement -> IfStatement | ExpressionStatement | PrintStatement | WhileStatement | Block
   * IfStatement -> "if" "(" Expression ")" Statement ("else" Statement) ?
   * Block -> "{" Declaration* "}"
   * ExpressionStatement -> Expression ";"
   * PrintStatement -> "print" Expression ";"
+  * WhileStatement -> "while" "(" Expression ")" Statement
   * Expression -> Comma expression
   * Comma Expression -> Assignment (, Assignment) *
   * Assignment -> IDENTIFIER "=" Assignment | Ternary Expression
@@ -88,15 +89,16 @@ class Parser {
   private Stmt statement() {
     if(match(IF)) return ifStatement();
     if(match(PRINT)) return printStatement();
+    if(match(WHILE)) return whileStatement();
     if(match(LEFT_BRACE)) return new Stmt.Block(block());
 
     return expressionStatement();
   }
 
   private Stmt ifStatement() {
-    consume(LEFT_BRACE, "Expected '(' after 'if'");
+    consume(LEFT_BRACE, "Expect '(' after 'if'");
     Expr condition = expression();
-    consume(RIGHT_BRACE, "Expected ')' after 'expression'");
+    consume(RIGHT_BRACE, "Expect ')' after expression");
 
     Stmt thenBranch = statement();
     Stmt elseBranch = null;
@@ -112,6 +114,16 @@ class Parser {
     Expr expr = expression();
     consume(SEMICOLON, "Expect ';' after value.");
     return new Stmt.Print(expr);
+  }
+
+  private Stmt whileStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'while'" );
+    Expr condition = expression();
+    consume(RIGHT_PAREN, "Expect '(' after expression");
+
+    Stmt body = statement();
+
+    return new Stmt.While(condition, body);
   }
 
   private Stmt expressionStatement() {
