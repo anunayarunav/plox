@@ -28,7 +28,7 @@ public class Lox {
 
   private static void runFile(String path) throws IOException {
     byte[] bytes = Files.readAllBytes(Paths.get(path));
-    run(new String(bytes, Charset.defaultCharset()));
+    run(new String(bytes, Charset.defaultCharset()), false);
 
     if (hadError) System.exit(65);
     if (hadRuntimeError) System.exit(70);
@@ -40,12 +40,12 @@ public class Lox {
 
     for (;;) {
       System.out.print("> ");
-      run(reader.readLine());
+      run(reader.readLine(), true);
       hadError = false;
     }
   }
 
-  private static void run(String source) {
+  private static void run(String source, boolean isPrompt) {
     Scanner scanner = new Scanner(source);
     List<Token> tokens = scanner.scanTokens();
 
@@ -53,16 +53,27 @@ public class Lox {
     // System.out.println(tokens);
 
     Parser parser = new Parser(tokens);
-    List<Stmt> statements = parser.parse();
 
-    // if(expression != null){
-    //   System.out.println(new AstPrinter().print(expression));
-    // }
+    if(isPrompt && tokens.get(tokens.size() - 2).type != SEMICOLON) {
+      //possibly an expression
+      Expr expression = parser.parseExpression();
 
-    // Stop if there was a syntax error.
-    if (hadError) return;
+      if(hadError) return;
 
-    interpreter.interpret(statements);
+      System.out.println(interpreter.interpretExpression(expression));
+    }
+    else {
+      List<Stmt> statements = parser.parse();
+
+      // if(expression != null){
+      //   System.out.println(new AstPrinter().print(expression));
+      // }
+
+      // Stop if there was a syntax error.
+      if (hadError) return;
+
+      interpreter.interpret(statements);
+    }
   }
 
   static void error(int line, String message) {

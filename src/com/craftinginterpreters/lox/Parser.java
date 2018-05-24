@@ -3,6 +3,8 @@ package com.craftinginterpreters.lox;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.Arrays;
+
 import static com.craftinginterpreters.lox.TokenType.*;
 
 /**
@@ -11,12 +13,14 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Program -> Declaration* EOF;
   * Declaration -> VarDecl | Statement
   * VarDecl -> VAR IDENTIFIER ( "=" Expression) ? ";"
-  * Statement -> IfStatement | ExpressionStatement | PrintStatement | WhileStatement | Block
+  * Statement -> IfStatement | ExpressionStatement | ForStatement | PrintStatement | WhileStatement | Block | Break
   * IfStatement -> "if" "(" Expression ")" Statement ("else" Statement) ?
-  * Block -> "{" Declaration* "}"
   * ExpressionStatement -> Expression ";"
+  * ForStatement -> "for" "(" varDeclaration | expressionStatement | ";" expression? ";" expression? ")" Statement
   * PrintStatement -> "print" Expression ";"
   * WhileStatement -> "while" "(" Expression ")" Statement
+  * Block -> "{" Declaration* "}"
+  * Break -> "break" ";"
   * Expression -> Comma expression
   * Comma Expression -> Assignment (, Assignment) *
   * Assignment -> IDENTIFIER "=" Assignment | Ternary Expression
@@ -35,6 +39,7 @@ class Parser {
   private static class ParseError extends RuntimeException {}
 
   private final List<Token> tokens;
+  private boolean loop = false;
   private int current = 0;
 
   Parser(List<Token> tokens) {
@@ -87,6 +92,8 @@ class Parser {
   }
 
   private Stmt statement() {
+    if(match(BREAK)) return breakStatement();
+    if(match(FOR)) return forStatement();
     if(match(IF)) return ifStatement();
     if(match(PRINT)) return printStatement();
     if(match(WHILE)) return whileStatement();
@@ -95,10 +102,74 @@ class Parser {
     return expressionStatement();
   }
 
+  private Stmt breakStatement() {
+
+    Token operator = previous();
+    Stmt stmt = new Stmt.Break(operator);
+    consume(SEMICOLON, "Expect ';' after break");
+
+    if(!loop) {
+      error(operator, "Illegal break statement");
+    }
+
+    return stmt;
+
+  }
+
+  private Stmt forStatement() {
+    consume(LEFT_PAREN, "Expect '(' after 'for'");
+    Stmt initializer;
+
+    if(match(SEMICOLON)) {
+      initializer = null;
+    }
+    else if(match(VAR)) {
+      initializer = varDeclaration();
+    }
+    else {
+      initializer = expressionStatement();
+    }
+
+    Expr condition = null;
+    if(!check(SEMICOLON)) {
+      condition = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after loop condition");
+
+    Expr increment = null;
+    if(!check(RIGHT_PAREN)) {
+      increment = expression();
+    }
+
+    consume(RIGHT_PAREN, "Expect ')' after for clauses");
+
+    boolean previous = loop;
+    loop = true;
+    Stmt body = statement();
+    loop = previous;
+
+    if(increment != null){
+      body = new Stmt.Block(Arrays.asList(body, new Stmt.Expression(increment)));
+    }
+
+    if(condition == null) {
+      condition = new Expr.Literal(true);
+    }
+
+    body = new Stmt.While(condition, body);
+
+    if(initializer != null) {
+      body = new Stmt.Block(Arrays.asList(initializer, body));
+    }
+
+    return body;
+  }
+
   private Stmt ifStatement() {
-    consume(LEFT_BRACE, "Expect '(' after 'if'");
+    consume(LEFT_PAREN, "Expect '(' after 'if'");
     Expr condition = expression();
-    consume(RIGHT_BRACE, "Expect ')' after expression");
+    consume(RIGHT_PAREN, "Expect ')' after expression");
 
     Stmt thenBranch = statement();
     Stmt elseBranch = null;
@@ -121,7 +192,10 @@ class Parser {
     Expr condition = expression();
     consume(RIGHT_PAREN, "Expect '(' after expression");
 
+    boolean previous = loop;
+    loop = true;
     Stmt body = statement();
+    loop = previous;
 
     return new Stmt.While(condition, body);
   }
