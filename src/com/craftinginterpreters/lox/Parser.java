@@ -11,7 +11,10 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Grammar so far
 
   * Program -> Declaration* EOF;
-  * Declaration -> VarDecl | Statement
+  * Declaration -> FunDecl | VarDecl | Statement
+  * FunDecl -> "fun" Function
+  * Function -> IDENTIFIER "(" parameters? ")" block
+  * parameters -> IDENTIFIER ( "," IDENTIFIER)*;
   * VarDecl -> VAR IDENTIFIER ( "=" Expression) ? ";"
   * Statement -> IfStatement | ExpressionStatement | ForStatement | PrintStatement | WhileStatement | Block | Break
   * IfStatement -> "if" "(" Expression ")" Statement ("else" Statement) ?
@@ -21,9 +24,8 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * WhileStatement -> "while" "(" Expression ")" Statement
   * Block -> "{" Declaration* "}"
   * Break -> "break" ";"
-  * Expression -> Comma expression
-  * Comma Expression -> Assignment (, Assignment) *
-  * Assignment -> IDENTIFIER "=" Assignment | Ternary Expression
+  * Expression -> Assignment
+  * Assignment -> IDENTIFIER "=" Assignment | Ternary Expression, right associative
   * Ternary Expression -> Logic_or ( "?" Ternary ":" Ternary) *, right associative
   * Logic_or -> Logic_and ( "or" Logic_and)*, left associative
   * Logic_and -> Equality ( "and" Equality) *, left associative
@@ -31,7 +33,9 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Comparison -> Addition ( "!=" | ">" | ">=" | "<=" Addition) *, left associative
   * Addition -> Multiplication ( "+" | "-" Multiplication) *, left associative
   * Multiplication -> Unary ( "*" | "/" Unary) *, left associative
-  * Unary -> ("!" | "-") Unary | Primary
+  * Unary -> ("!" | "-") Unary | Call
+  * Call -> Primary ("(" Arguments? ")")*;
+  * Arguments -> Expression ("," Expression) *;
   * Primary -> NUMBER | STRING | "TRUE" | "FALSE" | "NIL" | "(" Expression ")" | IDENTIFIER
 **/
 class Parser {
@@ -68,7 +72,8 @@ class Parser {
 
   private Stmt declaration() {
     try {
-      if(match(VAR)) return varDeclaration();
+      if (match(FUN)) return function("function");
+      if (match(VAR)) return varDeclaration();
 
       return statement();
     }
@@ -206,6 +211,27 @@ class Parser {
     return new Stmt.Expression(expr);
   }
 
+  private Stmt.Function function(String kind) {
+    Token name = consume(IDENTIFIER, "Expect " + kind + " name.");
+
+    consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+    List<Token> parameters = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (parameters.size() >= 8) {
+          error(peek(), "Cannot have more than 8 parameters.");
+        }
+
+        parameters.add(consume(IDENTIFIER, "Expect parameter name."));
+      } while (match(COMMA));
+    }
+
+    consume(RIGHT_PAREN, "Expect ')' after parameters.");
+    consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    List<Stmt> body = block();
+    return new Stmt.Function(name, parameters, body);
+  }
+
   private List<Stmt> block() {
     List<Stmt> statements = new ArrayList<Stmt>();
     while(!check(RIGHT_BRACE) && !isAtEnd()) {
@@ -217,20 +243,7 @@ class Parser {
   }
 
   private Expr expression() {
-    return comma();
-  }
-
-  //comma support added by @Anunay
-  private Expr comma() {
-    Expr expr = assignment();
-
-    while(match(COMMA)) {
-      Token operator = previous();
-      Expr right = assignment();
-      expr = new Expr.Binary(expr, operator, right);
-    }
-
-    return expr;
+    return assignment();
   }
 
   private Expr assignment() {
@@ -353,7 +366,38 @@ class Parser {
       return expr;
     }
 
-    return primary();
+    return call();
+  }
+
+  private Expr call() {
+
+    Expr expr = primary();
+
+    while(true) {
+      if(match(LEFT_PAREN)) {
+        expr = finishCall(expr);
+      } else {
+        break;
+      }
+    }
+
+    return expr;
+  }
+
+  private Expr finishCall(Expr callee) {
+    List<Expr> arguments = new ArrayList<>();
+    if (!check(RIGHT_PAREN)) {
+      do {
+        if (arguments.size() >= 8) {
+          error(peek(), "Cannot have more than 8 arguments.");
+        }
+        arguments.add(expression());
+      } while (match(COMMA));
+    }
+
+    Token paren = consume(RIGHT_PAREN, "Expect ')' after arguments.");
+
+    return new Expr.Call(callee, paren, arguments);
   }
 
   private Expr primary() {

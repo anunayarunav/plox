@@ -1,14 +1,7 @@
-var a = 1;
-var b = 1;
-var i = 0;
-while(i < 10){
-
-  if(i == 5){
-    print i;
-    break;
+{
+  var a = 0;
+  fun sayHi(first, last) {
+    print a;
   }
-
-  i = i + 1;
+  sayHi("Dear", "Reader");
 }
-
-print i;
