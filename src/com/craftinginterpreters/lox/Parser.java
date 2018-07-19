@@ -16,11 +16,12 @@ import static com.craftinginterpreters.lox.TokenType.*;
   * Function -> IDENTIFIER "(" parameters? ")" block
   * parameters -> IDENTIFIER ( "," IDENTIFIER)*;
   * VarDecl -> VAR IDENTIFIER ( "=" Expression) ? ";"
-  * Statement -> IfStatement | ExpressionStatement | ForStatement | PrintStatement | WhileStatement | Block | Break
+  * Statement -> IfStatement | ExpressionStatement | ForStatement | PrintStatement | ReturnStatement | WhileStatement | Block | Break
   * IfStatement -> "if" "(" Expression ")" Statement ("else" Statement) ?
   * ExpressionStatement -> Expression ";"
   * ForStatement -> "for" "(" varDeclaration | expressionStatement | ";" expression? ";" expression? ")" Statement
   * PrintStatement -> "print" Expression ";"
+  * ReturnStatement -> "return" Expression? ";"
   * WhileStatement -> "while" "(" Expression ")" Statement
   * Block -> "{" Declaration* "}"
   * Break -> "break" ";"
@@ -101,6 +102,7 @@ class Parser {
     if(match(FOR)) return forStatement();
     if(match(IF)) return ifStatement();
     if(match(PRINT)) return printStatement();
+    if(match(RETURN)) return returnStatement();
     if(match(WHILE)) return whileStatement();
     if(match(LEFT_BRACE)) return new Stmt.Block(block());
 
@@ -190,6 +192,17 @@ class Parser {
     Expr expr = expression();
     consume(SEMICOLON, "Expect ';' after value.");
     return new Stmt.Print(expr);
+  }
+
+  private Stmt returnStatement() {
+    Token keyword = previous();
+    Expr value = null;
+    if (!check(SEMICOLON)) {
+      value = expression();
+    }
+
+    consume(SEMICOLON, "Expect ';' after return value.");
+    return new Stmt.Return(keyword, value);
   }
 
   private Stmt whileStatement() {

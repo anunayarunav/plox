@@ -1,7 +1,10 @@
+var a = "global";
 {
-  var a = 0;
-  fun sayHi(first, last) {
+  fun showA() {
     print a;
   }
-  sayHi("Dear", "Reader");
+
+  showA();
+  var a = "block";
+  showA();
 }
