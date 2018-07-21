@@ -1,10 +1,15 @@
-var a = "global";
-{
-  fun showA() {
-    print a;
+class x {
+
+  a(){
+
   }
 
-  showA();
-  var a = "block";
-  showA();
+  b(){
+
+  }
+
 }
+
+var q = x();
+q.y = 5;
+print q.y;
