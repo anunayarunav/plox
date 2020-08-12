@@ -8,17 +8,15 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
-import static com.craftinginterpreters.lox.TokenType.*;
-
 public class Lox {
-
-  private static final Interpreter interpreter = new Interpreter();
   static boolean hadError = false;
   static boolean hadRuntimeError = false;
+  private static final Interpreter interpreter = new Interpreter();
 
   public static void main(String[] args) throws IOException {
     if (args.length > 1) {
       System.out.println("Usage: jlox [script]");
+      System.exit(64); 
     } else if (args.length == 1) {
       runFile(args[0]);
     } else {
@@ -28,8 +26,9 @@ public class Lox {
 
   private static void runFile(String path) throws IOException {
     byte[] bytes = Files.readAllBytes(Paths.get(path));
-    run(new String(bytes, Charset.defaultCharset()), false);
+    run(new String(bytes, Charset.defaultCharset()));
 
+    // Indicate an error in the exit code.
     if (hadError) System.exit(65);
     if (hadRuntimeError) System.exit(70);
   }
@@ -38,27 +37,20 @@ public class Lox {
     InputStreamReader input = new InputStreamReader(System.in);
     BufferedReader reader = new BufferedReader(input);
 
-    for (;;) {
+    for (;;) { 
       System.out.print("> ");
-      run(reader.readLine(), true);
+      String line = reader.readLine();
+      if (line == null) break;
+      run(line);
       hadError = false;
     }
   }
 
-  private static void run(String source, boolean isPrompt) {
+  private static void run(String source) {
     Scanner scanner = new Scanner(source);
     List<Token> tokens = scanner.scanTokens();
-
-    // For now, just print the tokens.
-    // System.out.println(tokens);
-
     Parser parser = new Parser(tokens);
-
     List<Stmt> statements = parser.parse();
-
-    // if(expression != null){
-    //   System.out.println(new AstPrinter().print(expression));
-    // }
 
     // Stop if there was a syntax error.
     if (hadError) return;
